@@ -18,24 +18,46 @@ try {
 
 
 
-const getIndex = ((req,res)=>{
+export const getIndex = async (req,res)=>{
     res.render('index', {title: 'Main Page'})
-});
+};
 
-const getGameDetails = ((req,res)=>{
+export const getGameDetails = async (req,res)=>{
+    try {
+        const game = await Fact_Game.findOne({
+            where: { game_ID },
+            include: [{
+                model: fact_table,
+                as: 'details'
+            }]
+        });
+
+        if (!game) {
+            return null;
+        }
+
+        details_ID = game.details_ID
+        return game.details.toJSON();
+    }catch (err) {
+        console.error(err);
+        throw err;
+    }
+};
+
+export const postAddGame = async (req,res)=>{
     
-});
+};
 
-const postAddGame = ((req,res)=>{
+export const postEditGame = async (req, res)=>{
     
-});
+};
 
-const postEditGame = ((req, res)=>{
+export const postDeleteGame = async (req,res)=>{
+    const {App_ID} = req.body
+    
+    if(App_ID !== null){
 
-});
+    }
+};
 
-const postDeleteGame = ((req,res)=>{
-
-});
-
-module.exports = {sequelize, getIndex, getGameDetails, postAddGame, postEditGame, postDeleteGame};
+module.exports = {sequelize};

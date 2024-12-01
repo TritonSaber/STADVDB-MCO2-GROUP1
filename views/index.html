@@ -1,19 +1,65 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
     <head>
         <title>Steam Games</title>
+        <style>
+            table {
+            width: 100%;
+            border-collapse: collapse;
+            }
+            table, th, td {
+                border: 1px solid black;
+            }
+            th, td {
+                padding: 10px;
+                text-align: left;
+            }
+        </style>
     </head>
 
     <body>
+        <h1>Games Selection</h1>
+
+        <form id="dateForm">
+        <!-- Game Selection by ID -->
+        <label for="gameID">Game ID:</label>
+        <input type="number" id="gameID" name="game_ID"><br><br>
+
+        <!-- Game Selection by Time Period -->
+        <label for="date-period">Game Date Period</label>
+        <select id="date-period" name="labeled_date_period">
+            <option value="">-- Select Displayed Games based on Date --</option>
+            <option value="All">All Games</option>
+            <option value="Before 2020">None</option>
+            <option value="After 2020">Low</option>
+        </select><br><br>
+
+        <button type="submit">Get Game Details</button>
+        </form>
         <div class="game-table">
+        <table>
             <thead>
             <tr>
                 <th>Game Name</th>
                 <th>Release Date</th>
+                <th>Required Age</th>
                 <th>Price</th>
+                <th>DLC Count</th>
+                <th>Achievements</th>
                 <th>Developers</th>
                 <th>Publishers</th>
+                <th>Positive reviews</th>
+                <th>Negative reviews</th>
             </tr>
             </thead>
+            <tbody id="games-body"></tbody>
+        </table>
         </div>
+    
+    <script>
+        const form = document.getElementById('dateForm');
+        const games_table = document.getElementById('games_table')
+        const games_body = document.getElementById('games-body')
+    </script>
     </body>
 </html>
