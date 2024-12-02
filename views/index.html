@@ -21,18 +21,8 @@
     <h1>Games Selection</h1>
 
     <form id="dateForm">
-        <!-- Game Selection by ID -->
         <label for="gameID">Game ID:</label>
         <input type="number" id="gameID" name="game_ID"><br><br>
-
-        <!-- Game Selection by Time Period -->
-        <label for="date-period">Game Date Period</label>
-        <select id="date-period" name="labeled_date_period">
-            <option value="">-- Select Displayed Games based on Date --</option>
-            <option value="All">All Games</option>
-            <option value="Before 2020">Before 2020</option>
-            <option value="After 2020">After 2020</option>
-        </select><br><br>
 
         <button type="submit">Get Game Details</button>
     </form>
@@ -47,10 +37,9 @@
                     <th>Price</th>
                     <th>DLC Count</th>
                     <th>Achievements</th>
-                    <th>Developers</th>
-                    <th>Publishers</th>
-                    <th>Positive reviews</th>
-                    <th>Negative reviews</th>
+                    <th>Positive Reviews</th>
+                    <th>Negative Reviews</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="games-body"></tbody>
@@ -58,63 +47,70 @@
     </div>
 
     <h2>Add/Edit Game</h2>
-    <form id="crudForm">
-        <input type="hidden" id="crudGameID" name="crud_game_ID">
+    <form id="gameForm">
+        <input type="hidden" id="editID" name="editID">
         <label for="gameName">Game Name:</label>
-        <input type="text" id="gameName" name="gameName" required><br><br>
+        <input type="text" id="gameName" name="gameName"><br><br>
+
         <label for="releaseDate">Release Date:</label>
-        <input type="date" id="releaseDate" name="releaseDate" required><br><br>
+        <input type="date" id="releaseDate" name="releaseDate"><br><br>
+
         <label for="requiredAge">Required Age:</label>
-        <input type="number" id="requiredAge" name="requiredAge" required><br><br>
+        <input type="number" id="requiredAge" name="requiredAge"><br><br>
+
         <label for="price">Price:</label>
-        <input type="number" id="price" name="price" step="0.01" required><br><br>
-        <button type="button" id="addGameButton">Add Game</button>
-        <button type="button" id="updateGameButton">Update Game</button>
-        <button type="button" id="deleteGameButton">Delete Game</button>
+        <input type="number" id="price" name="price" step="0.01"><br><br>
+
+        <button type="submit" id="submitButton">Add Game</button>
     </form>
 
     <script>
         const form = document.getElementById('dateForm');
         const games_body = document.getElementById('games-body');
-        const crudForm = document.getElementById('crudForm');
+        const gameForm = document.getElementById('gameForm');
+        const submitButton = document.getElementById('submitButton');
 
         form.addEventListener('submit', async (event) => {
-            event.preventDefault(); // Prevent the default form submission
+            event.preventDefault();
 
             const gameID = document.getElementById('gameID').value;
-            const datePeriod = document.getElementById('date-period').value;
-
-            // Fetch game details based on the input
             const response = await fetch('/get-games', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ game_ID: gameID, labeled_date_period: datePeriod })
+                body: JSON.stringify({ game_ID: gameID })
             });
 
-            const games = await response.json();
-            games_body.innerHTML = ''; // Clear the current table body
-
-            // Populate the table with the fetched game details
-            games.forEach(game => {
-                const row = `<tr onclick ="selectGame(${game.AppID}, '${game.Name}', '${game.Release_Date}', ${game.Required_age}, ${game.Price})">
-                    <td>${game.Name}</td>
-                    <td>${game.Release_Date}</td>
-                    <td>${game.Required_age}</td>
-                    <td>${game.Price}</td>
-                    <td>${game.DLC_count}</td>
-                    <td>${game.Achievements}</td>
-                    <td>${game.Developers}</td>
-                    <td>${game.Publishers}</td>
-                    <td>${game.Positive_reviews}</td>
-                    <td>${game.Negative_reviews}</td>
-                </tr>`;
-                games_body.innerHTML += row; // Append the new row to the table body
-            });
+            if (response.ok) {
+                const game = await response.json();
+                // Populate the game table with the returned game details
+                games_body.innerHTML = `
+                    <tr id="game-${game.AppID}">
+                        <td>${game.Name}</td>
+                        <td>${game.Release_Date}</td>
+                        <td>${game.Required_age}</td>
+                        <td>${game.Price}</td>
+                        <td>${game.DLC_count}</td>
+                        <td>${game.Achievements}</td>
+                        <td>${game.Positive_reviews}</td>
+                        <td>${game.Negative_reviews}</td>
+                        <td>
+                            <button onclick="editGame(${game.AppID})">Edit</button>
+                            <button onclick="deleteGame(${game.AppID})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            } else {
+                const error = await response.json();
+                alert(error.message);
+            }
         });
 
-        document.getElementById('addGameButton').addEventListener('click', async () => {
+        gameForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const editID = document.getElementById('editID').value;
             const gameData = {
                 Name: document.getElementById('gameName').value,
                 Release_Date: document.getElementById('releaseDate').value,
@@ -122,7 +118,40 @@
                 Price: document.getElementById('price').value
             };
 
-            const response = await fetch('/add-game', {
+            if (editID) {
+                // Update existing game
+                const response = await fetch(`/edit/${editID}`, {
+ method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(gameData)
+            });
+
+            if (response.ok) {
+                const updatedGame = await response.json();
+                document.getElementById(`game-${updatedGame.AppID}`).innerHTML = `
+                    <td>${updatedGame.Name}</td>
+                    <td>${updatedGame.Release_Date}</td>
+                    <td>${updatedGame.Required_age}</td>
+                    <td>${updatedGame.Price}</td>
+                    <td>${updatedGame.DLC_count}</td>
+                    <td>${updatedGame.Achievements}</td>
+                    <td>${updatedGame.Positive_reviews}</td>
+                    <td>${updatedGame.Negative_reviews}</td>
+                    <td>
+                        <button onclick="editGame(${updatedGame.AppID})">Edit</button>
+                        <button onclick="deleteGame(${updatedGame.AppID})">Delete</button>
+                    </td>
+                `;
+                resetForm();
+            } else {
+                const error = await response.json();
+                alert(error.message);
+            }
+        } else {
+            // Add new game
+            const response = await fetch('/add', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -131,63 +160,61 @@
             });
 
             if (response.ok) {
-                alert('Game added successfully!');
-                form.dispatchEvent(new Event('submit')); // Refresh the game list
-                crudForm.reset(); // Reset the CRUD form
+                const newGame = await response.json();
+                games_body.innerHTML += `
+                    <tr id="game-${newGame.AppID}">
+                        <td>${newGame.Name}</td>
+                        <td>${newGame.Release_Date}</td>
+                        <td>${newGame.Required_age}</td>
+                        <td>${newGame.Price}</td>
+                        <td>${newGame.DLC_count}</td>
+                        <td>${newGame.Achievements}</td>
+                        <td>${newGame.Positive_reviews}</td>
+                        <td>${newGame.Negative_reviews}</td>
+                        <td>
+                            <button onclick="editGame(${newGame.AppID})">Edit</button>
+                            <button onclick="deleteGame(${newGame.AppID})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+                resetForm();
             } else {
-                alert('Failed to add game. Please check the server logs.');
+                const error = await response.json();
+                alert(error.message);
             }
+        }
         });
 
-        document.getElementById('updateGameButton').addEventListener('click', async () => {
-            const gameID = document.getElementById('crudGameID').value;
-            const gameData = {
-                AppID: gameID,
-                Name: document.getElementById('gameName').value,
-                Release_Date: document.getElementById('releaseDate').value,
-                Required_age: document.getElementById('requiredAge').value,
-                Price: document.getElementById('price').value
-            };
+        function editGame(id) {
+            const row = document.getElementById(`game-${id}`);
+            const cells = row.getElementsByTagName('td');
+            document.getElementById('editID').value = id;
+            document.getElementById('gameName').value = cells[0].innerText;
+            document.getElementById('releaseDate').value = cells[1].innerText;
+            document.getElementById('requiredAge').value = cells[2].innerText;
+            document.getElementById('price').value = cells[3].innerText;
+            submitButton.innerText = 'Update Game';
+        }
 
-            const response = await fetch('/update-game', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(gameData)
+        function deleteGame(id) {
+            fetch(`/delete/${id}`, {
+                method: 'POST'
+            }).then(response => {
+                if (response.ok) {
+                    document.getElementById(`game-${id}`).remove();
+                } else {
+                    alert('Error deleting game');
+                }
             });
+        }
 
-            if (response.ok) {
-                alert('Game updated successfully!');
-                form.dispatchEvent(new Event('submit')); // Refresh the game list
-                crudForm.reset(); // Reset the CRUD form
-            } else {
-                alert('Failed to update game. Please check the server logs.');
-            }
-        });
-
-        document.getElementById('deleteGameButton').addEventListener('click', async () => {
-            const gameID = document.getElementById('crudGameID').value;
-
-            const response = await fetch(`/delete-game/${gameID}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                alert('Game deleted successfully!');
-                form.dispatchEvent(new Event('submit')); // Refresh the game list
-                crudForm.reset(); // Reset the CRUD form
-            } else {
-                alert('Failed to delete game. Please check the server logs.');
-            }
-        });
-
-        function selectGame(id, name, releaseDate, requiredAge, price) {
-            document.getElementById('crudGameID').value = id;
-            document.getElementById('gameName').value = name;
-            document.getElementById('releaseDate').value = releaseDate;
-            document.getElementById('requiredAge').value = requiredAge;
-            document.getElementById('price').value = price;
+        function resetForm() {
+            document.getElementById('editID').value = '';
+            document.getElementById('gameName').value = '';
+            document.getElementById('releaseDate').value = '';
+            document.getElementById('requiredAge').value = '';
+            document.getElementById('price').value = '';
+            submitButton.innerText = 'Add Game';
         }
     </script>
 </body>
