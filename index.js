@@ -1,21 +1,14 @@
 const express = require('express');
 const app = express();
-const PORT = 3000;
+const routes = require('./routes/routes');
+const bodyParser = require('body-parser');
 
-app.get("/", (req,res) => {
-    res.sendFile(__dirname + '/views/index.html');
-});
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use('/', routes);
 
-app.get('/dev', async (req, res) => {
-    try {
-        const users = await developer.findAll();
-        res.json(users);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error fetching users');
-    }
-});
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log('Server running on port ' + PORT);
+    console.log(`Server running on port ${PORT}`);
 });

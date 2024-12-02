@@ -1,63 +1,119 @@
-
-const sequelize = require('../db');
+const sequelize = require('../models/main_db.js');
 const express = require('express');
-const fact_table = require('./models/main_db.js')
+const fact_table = require('../models/main_db.js');
+const path = require('path');
+const { masterDb, nodeOneDb, nodeTwoDb } = require('../models/main_db.js');
 
-const sequelize = new Sequelize('steamgameswarehouse', 'root', '96ePChmajy5n', {
-    host: 'localhost',
-    dialect: 'mysql'
-});
-
-try {
-    await sequelize.authenticate();
-    console.log('Connection to MySQL has been established');
-} catch (error) {
-    console.error('Unable to connect to the database:', error);
-}
-
-
-
-
-export const getIndex = async (req,res)=>{
-    res.render('index', {title: 'Main Page'})
+const getIndex = (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'views', 'index.html')); 
 };
 
-export const getGameDetails = async (req,res)=>{
+// Function to add a game to the appropriate node
+const postAddGame = async (req, res) => {
+    const gameData = req.body;
+
     try {
-        const game = await Fact_Game.findOne({
-            where: { game_ID },
-            include: [{
-                model: fact_table,
-                as: 'details'
-            }]
+        // Determine where to insert based on release year
+        const releaseYear = new Date(gameData.releaseDate).getFullYear();
+        let dbInstance;
+
+        if (releaseYear < 2020) {
+            dbInstance = nodeOneDb;
+        } else {
+            dbInstance = nodeTwoDb;
+        }
+
+        // Insert into the appropriate node
+        await dbInstance.models.fact_table.create(gameData);
+
+        // Replicate to master node
+        await masterDb.models.fact_table.create(gameData);
+
+        res.status(201).send('Game added successfully');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error adding game');
+    }
+};
+
+// Function to get game details from the central node
+const getGameDetails = async (req, res) => {
+    const { game_ID } = req.body;
+
+    try {
+        const game = await masterDb.models.fact_table.findOne({
+            where: { AppID: game_ID }
         });
 
         if (!game) {
-            return null;
+            return res.status(404).send('Game not found');
         }
 
-        details_ID = game.details_ID
-        return game.details.toJSON();
-    }catch (err) {
+        res.status(200).json(game);
+    } catch (err) {
         console.error(err);
-        throw err;
+        res.status(500).send('Error fetching game details');
     }
 };
 
-export const postAddGame = async (req,res)=>{
-    
-};
+const postEditGame = async (req, res) => {
+    const { AppID, updates } = req.body;
 
-export const postEditGame = async (req, res)=>{
-    
-};
+    const transaction = await masterDb.transaction();
 
-export const postDeleteGame = async (req,res)=>{
-    const {App_ID} = req.body
-    
-    if(App_ID !== null){
+    try {
+        const game = await masterDb.models.fact_table.findOne({ where: { AppID } }, { transaction });
 
+        if (!game) {
+            return res.status(404).send('Game not found');
+        }
+
+        // Update game details
+        await game.update(updates, { transaction });
+
+        // Replicate changes to other nodes
+        await nodeOneDb.models.fact_table.update(updates, { where: { AppID }, transaction });
+        await nodeTwoDb.models.fact_table.update(updates, { where: { AppID }, transaction });
+
+        await transaction.commit();
+        res.status(200).send('Game updated successfully');
+    } catch (error) {
+        await transaction.rollback();
+        console.error(error);
+        res.status(500).send('Error updating game');
     }
 };
 
-module.exports = {sequelize};
+const postDeleteGame = async (req, res) => {
+    const { AppID } = req.body;
+
+    try {
+        // Delete from master node
+        await masterDb.models.fact_table.destroy({ where: { AppID } });
+
+        // Also delete from the appropriate node
+        const game = await masterDb.models.fact_table.findOne({ where: { AppID } });
+        let dbInstance;
+
+        if (game && game.releaseYear < 2020) {
+            dbInstance = nodeOneDb; // Node 2
+        } else {
+            dbInstance = nodeTwoDb; // Node 3
+        }
+
+        await dbInstance.models.fact_table.destroy({ where: { AppID } });
+
+        res.status(200).send('Game deleted successfully');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error deleting game');
+    }
+};
+
+module.exports = {
+    postAddGame,
+    getGameDetails,
+    postEditGame,
+    postDeleteGame,
+    getIndex
+};

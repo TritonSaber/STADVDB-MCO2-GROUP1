@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>Steam Games</title>
-        <style>
-            table {
+<head>
+    <title>Steam Games</title>
+    <style>
+        table {
             width: 100%;
             border-collapse: collapse;
-            }
-            table, th, td {
-                border: 1px solid black;
-            }
-            th, td {
-                padding: 10px;
-                text-align: left;
-            }
-        </style>
-    </head>
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+    </style>
+</head>
 
-    <body>
-        <h1>Games Selection</h1>
+<body>
+    <h1>Games Selection</h1>
 
-        <form id="dateForm">
+    <form id="dateForm">
         <!-- Game Selection by ID -->
         <label for="gameID">Game ID:</label>
         <input type="number" id="gameID" name="game_ID"><br><br>
@@ -35,31 +35,157 @@
         </select><br><br>
 
         <button type="submit">Get Game Details</button>
-        </form>
-        <div class="game-table">
+    </form>
+
+    <div class="game-table">
         <table>
             <thead>
-            <tr>
-                <th>Game Name</th>
-                <th>Release Date</th>
-                <th>Required Age</th>
-                <th>Price</th>
-                <th>DLC Count</th>
-                <th>Achievements</th>
-                <th>Developers</th>
-                <th>Publishers</th>
-                <th>Positive reviews</th>
-                <th>Negative reviews</th>
-            </tr>
+                <tr>
+                    <th>Game Name</th>
+                    <th>Release Date</th>
+                    <th>Required Age</th>
+                    <th>Price</th>
+                    <th>DLC Count</th>
+                    <th>Achievements</th>
+                    <th>Developers</th>
+                    <th>Publishers</th>
+                    <th>Positive reviews</th>
+                    <th>Negative reviews</th>
+                </tr>
             </thead>
             <tbody id="games-body"></tbody>
         </table>
-        </div>
-    
+    </div>
+
+    <h2>Add/Edit Game</h2>
+    <form id="crudForm">
+        <input type="hidden" id="crudGameID" name="crud_game_ID">
+        <label for="gameName">Game Name:</label>
+        <input type="text" id="gameName" name="gameName" required><br><br>
+        <label for="releaseDate">Release Date:</label>
+        <input type="date" id="releaseDate" name="releaseDate" required><br><br>
+        <label for="requiredAge">Required Age:</label>
+        <input type="number" id="requiredAge" name="requiredAge" required><br><br>
+        <label for="price">Price:</label>
+        <input type="number" id="price" name="price" step="0.01" required><br><br>
+        <button type="button" id="addGameButton">Add Game</button>
+        <button type="button" id="updateGameButton">Update Game</button>
+        <button type="button" id="deleteGameButton">Delete Game</button>
+    </form>
+
     <script>
         const form = document.getElementById('dateForm');
-        const games_table = document.getElementById('games_table')
-        const games_body = document.getElementById('games-body')
+        const games_body = document.getElementById('games-body');
+        const crudForm = document.getElementById('crudForm');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const gameID = document.getElementById('gameID').value;
+            const datePeriod = document.getElementById('date-period').value;
+
+            // Fetch game details based on the input
+            const response = await fetch('/get-games', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ game_ID: gameID, labeled_date_period: datePeriod })
+            });
+
+            const games = await response.json();
+            games_body.innerHTML = ''; 
+
+            // Populate the table with the fetched game details
+            games.forEach(game => {
+                const row = `<tr onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_Date}', ${game.Required_age}, ${game.Price})">
+                    <td>${game.Name}</td>
+                    <td>${game.Release_Date}</td>
+                    <td>${game.Required_age}</td>
+                    <td>${game.Price}</td>
+                    <td>${game.DLC_count}</td>
+                    <td>${game.Achievements}</td>
+                    <td>${game.Developers}</td>
+                    <td>${game.Publishers}</td>
+                    <td>${game.Positive_reviews}</td>
+                    <td>${game.Negative_reviews}</td>
+                </tr>`;
+                games_body.innerHTML += row;
+            });
+        });
+
+        document.getElementById('addGameButton').addEventListener('click', async () => {
+            const gameData = {
+                Name: document.getElementById('gameName').value,
+                Release_Date: document.getElementById('releaseDate').value,
+                Required_age: document.getElementById('requiredAge').value,
+                Price: document.getElementById('price').value
+            };
+
+            const response = await fetch('/add-game', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(gameData)
+            });
+
+            if (response.ok) {
+                alert('Game added successfully!');
+                form.dispatchEvent(new Event('submit'));
+            } else {
+                alert('Failed to add game.');
+            }
+        });
+
+        document.getElementById('updateGameButton').addEventListener('click', async () => {
+            const gameID = document.getElementById('crudGameID').value;
+            const gameData = {
+                AppID: gameID,
+                Name: document.getElementById('gameName').value,
+                Release_Date: document.getElementById('releaseDate').value,
+                Required_age: document.getElementById('requiredAge').value,
+                Price: document.getElementById('price').value
+            };
+
+            const response = await fetch('/update-game', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(gameData)
+            });
+
+            if (response.ok) {
+                alert('Game updated successfully!');
+                form.dispatchEvent(new Event('submit'));
+            } else {
+                alert('Failed to update game.');
+            }
+        });
+
+        document.getElementById('deleteGameButton').addEventListener('click', async () => {
+            const gameID = document.getElementById('crudGameID').value;
+
+            const response = await fetch(`/delete-game/${gameID}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('Game deleted successfully!');
+                form.dispatchEvent(new Event('submit')); 
+            } else {
+                alert('Failed to delete game.');
+            }
+        });
+
+        function selectGame(id, name, releaseDate, requiredAge, price) {
+            document.getElementById('crudGameID').value = id;
+            document.getElementById('gameName').value = name;
+            document.getElementById('releaseDate').value = releaseDate;
+            document.getElementById('requiredAge').value = requiredAge;
+            document.getElementById('price').value = price;
+        }
     </script>
-    </body>
+</body>
 </html>
