@@ -1,8 +1,7 @@
 const sequelize = require('../models/main_db.js');
 const express = require('express');
-const fact_table = require('../models/main_db.js');
 const path = require('path');
-const { masterDb, nodeOneDb, nodeTwoDb } = require('../models/main_db.js');
+const { masterDb, nodeOneDb, nodeTwoDb, fact_table } = require('../models/main_db.js');
 
 const getIndex = (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'views', 'index.html')); 
@@ -14,7 +13,9 @@ const postAddGame = async (req, res) => {
 
     try {
         // Determine where to insert based on release year
-        const releaseYear = new Date(gameData.releaseDate).getFullYear();
+        const releaseYear = new Date(gameData.release_date).getFullYear();
+        
+        console.log(releaseYear);
         let dbInstance;
 
         if (releaseYear < 2020) {
@@ -39,14 +40,19 @@ const postAddGame = async (req, res) => {
 // Function to get game details from the central node
 const getGameDetails = async (req, res) => {
     const { game_ID } = req.body;
+    masterDb.models.fact_table = fact_table;
 
     try {
-        const game = await masterDb.models.fact_table.findOne({
-            where: { AppID: game_ID }
+        const game = await masterDb.models.fact_table.findAll({
+            where: { AppID: game_ID },
+            attributes: ['Release_date', 'Name', 'Required_age', 'Price', 'DLC_count', 'Achievements',
+                'Metacritic_score', 'Positive_reviews', 'Negative_reviews'
+            ],
+            raw:true
         });
 
-        if (!game) {
-            return res.status(404).send('Game not found');
+        if (!game.length) {
+            return res.status(404).send('Games not found');
         }
 
         res.status(200).json(game);
@@ -55,6 +61,7 @@ const getGameDetails = async (req, res) => {
         res.status(500).send('Error fetching game details');
     }
 };
+
 
 const postEditGame = async (req, res) => {
     const { AppID, updates } = req.body;

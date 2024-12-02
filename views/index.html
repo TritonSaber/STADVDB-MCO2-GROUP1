@@ -47,8 +47,7 @@
                     <th>Price</th>
                     <th>DLC Count</th>
                     <th>Achievements</th>
-                    <th>Developers</th>
-                    <th>Publishers</th>
+                    <th>Metacritic Score</th>
                     <th>Positive reviews</th>
                     <th>Negative reviews</th>
                 </tr>
@@ -100,13 +99,12 @@
             games.forEach(game => {
                 const row = `<tr onclick ="selectGame(${game.AppID}, '${game.Name}', '${game.Release_Date}', ${game.Required_age}, ${game.Price})">
                     <td>${game.Name}</td>
-                    <td>${game.Release_Date}</td>
+                    <td>${game.Release_date}</td>
                     <td>${game.Required_age}</td>
                     <td>${game.Price}</td>
                     <td>${game.DLC_count}</td>
                     <td>${game.Achievements}</td>
-                    <td>${game.Developers}</td>
-                    <td>${game.Publishers}</td>
+                    <td>${game.Metacritic_score}</td>
                     <td>${game.Positive_reviews}</td>
                     <td>${game.Negative_reviews}</td>
                 </tr>`;
@@ -117,10 +115,11 @@
         document.getElementById('addGameButton').addEventListener('click', async () => {
             const gameData = {
                 Name: document.getElementById('gameName').value,
-                Release_Date: document.getElementById('releaseDate').value,
+                Release_date: document.getElementById('releaseDate').value,
                 Required_age: document.getElementById('requiredAge').value,
                 Price: document.getElementById('price').value
             };
+            console.log(gameData.Release_date);
 
             const response = await fetch('/add-game', {
                 method: 'POST',
