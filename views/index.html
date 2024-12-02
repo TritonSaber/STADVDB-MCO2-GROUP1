@@ -30,8 +30,8 @@
         <select id="date-period" name="labeled_date_period">
             <option value="">-- Select Displayed Games based on Date --</option>
             <option value="All">All Games</option>
-            <option value="Before 2020">None</option>
-            <option value="After 2020">Low</option>
+            <option value="Before 2020">Before 2020</option>
+            <option value="After 2020">After 2020</option>
         </select><br><br>
 
         <button type="submit">Get Game Details</button>
@@ -79,7 +79,7 @@
         const crudForm = document.getElementById('crudForm');
 
         form.addEventListener('submit', async (event) => {
-            event.preventDefault();
+            event.preventDefault(); // Prevent the default form submission
 
             const gameID = document.getElementById('gameID').value;
             const datePeriod = document.getElementById('date-period').value;
@@ -94,11 +94,11 @@
             });
 
             const games = await response.json();
-            games_body.innerHTML = ''; 
+            games_body.innerHTML = ''; // Clear the current table body
 
             // Populate the table with the fetched game details
             games.forEach(game => {
-                const row = `<tr onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_Date}', ${game.Required_age}, ${game.Price})">
+                const row = `<tr onclick ="selectGame(${game.AppID}, '${game.Name}', '${game.Release_Date}', ${game.Required_age}, ${game.Price})">
                     <td>${game.Name}</td>
                     <td>${game.Release_Date}</td>
                     <td>${game.Required_age}</td>
@@ -110,7 +110,7 @@
                     <td>${game.Positive_reviews}</td>
                     <td>${game.Negative_reviews}</td>
                 </tr>`;
-                games_body.innerHTML += row;
+                games_body.innerHTML += row; // Append the new row to the table body
             });
         });
 
@@ -132,9 +132,10 @@
 
             if (response.ok) {
                 alert('Game added successfully!');
-                form.dispatchEvent(new Event('submit'));
+                form.dispatchEvent(new Event('submit')); // Refresh the game list
+                crudForm.reset(); // Reset the CRUD form
             } else {
-                alert('Failed to add game.');
+                alert('Failed to add game. Please check the server logs.');
             }
         });
 
@@ -158,9 +159,10 @@
 
             if (response.ok) {
                 alert('Game updated successfully!');
-                form.dispatchEvent(new Event('submit'));
+                form.dispatchEvent(new Event('submit')); // Refresh the game list
+                crudForm.reset(); // Reset the CRUD form
             } else {
-                alert('Failed to update game.');
+                alert('Failed to update game. Please check the server logs.');
             }
         });
 
@@ -173,9 +175,10 @@
 
             if (response.ok) {
                 alert('Game deleted successfully!');
-                form.dispatchEvent(new Event('submit')); 
+                form.dispatchEvent(new Event('submit')); // Refresh the game list
+                crudForm.reset(); // Reset the CRUD form
             } else {
-                alert('Failed to delete game.');
+                alert('Failed to delete game. Please check the server logs.');
             }
         });
 
