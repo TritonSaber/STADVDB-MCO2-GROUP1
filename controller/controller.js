@@ -8,9 +8,37 @@ const getIndex = (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'views', 'index.html')); 
 };
 
+const checkSlaveAvailability = async () => {
+    try {
+        // Check if nodeOneDb is up
+        await nodeOneDb.authenticate();
+        console.log('Node One is available');
+    } catch (error) {
+        console.error('Node One is not available:', error);
+        return false;
+    }
+
+    try {
+        // Check if nodeTwoDb is up
+        await nodeTwoDb.authenticate();
+        console.log('Node Two is available');
+    } catch (error) {
+        console.error('Node Two is not available:', error);
+        return false;
+    }
+
+    return true; // Both nodes are available
+};
+
 // Function to add a game to the appropriate node
 const postAddGame = async (req, res) => {
     const gameData = req.body;
+
+    // Check slave availability before proceeding
+    const slavesAvailable = await checkSlaveAvailability();
+    if (!slavesAvailable) {
+        return res.status(503).send('One or more slave databases are not available.');
+    }
 
     try {
         // Determine where to insert based on release year
@@ -95,6 +123,12 @@ const getGameDetails = async (req, res) => {
 const postEditGame = async (req, res) => {
     const { AppID, updates } = req.body;
 
+    // Check slave availability before proceeding
+    const slavesAvailable = await checkSlaveAvailability();
+    if (!slavesAvailable) {
+        return res.status(503).send('One or more slave databases are not available.');
+    }
+
     const transaction = await masterDb.transaction();
 
     try {
@@ -122,6 +156,12 @@ const postEditGame = async (req, res) => {
 
 const postDeleteGame = async (req, res) => {
     const { AppID } = req.body;
+
+    // Check slave availability before proceeding
+    const slavesAvailable = await checkSlaveAvailability();
+    if (!slavesAvailable) {
+        return res.status(503).send('One or more slave databases are not available.');
+    }
 
     try {
         // Delete from master node
