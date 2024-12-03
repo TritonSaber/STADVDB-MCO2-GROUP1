@@ -1,6 +1,7 @@
 const sequelize = require('../models/main_db.js');
 const express = require('express');
 const path = require('path');
+const Op = require('sequelize');
 const { masterDb, nodeOneDb, nodeTwoDb, fact_table } = require('../models/main_db.js');
 
 const getIndex = (req, res) => {
@@ -39,17 +40,45 @@ const postAddGame = async (req, res) => {
 
 // Function to get game details from the central node
 const getGameDetails = async (req, res) => {
-    const { game_ID } = req.body;
+    const { game_ID, labeled_date_period } = req.body;
     masterDb.models.fact_table = fact_table;
+
+    const yearThreshold = new Date("2020-01-01").getFullYear()
+    console.log(yearThreshold)
+    var dateCondition = {
+        AppID: game_ID
+    };
+
+    if(labeled_date_period === 'All'){
+        console.log("All")
+        dateCondition = {
+            AppID: game_ID
+        };
+    }
+    else if(labeled_date_period === 'Before 2020'){
+        console.log("Before 2020");
+        dateCondition.Release_date = {
+                [Op.lt]: yearThreshold,
+            };
+        console.log(dateCondition);
+    }
+    else{
+        console.log("After 2020");
+            dateCondition.Release_date = {
+                [Op.gte]: yearThreshold,
+            };
+        console.log(dateCondition);
+    }
 
     try {
         const game = await masterDb.models.fact_table.findAll({
-            where: { AppID: game_ID },
+            where: dateCondition,
             attributes: ['Release_date', 'Name', 'Required_age', 'Price', 'DLC_count', 'Achievements',
                 'Metacritic_score', 'Positive_reviews', 'Negative_reviews'
             ],
             raw:true
         });
+    
 
         if (!game.length) {
             return res.status(404).send('Games not found');
@@ -102,7 +131,7 @@ const postDeleteGame = async (req, res) => {
         const game = await masterDb.models.fact_table.findOne({ where: { AppID } });
         let dbInstance;
 
-        if (game && game.releaseYear < 2020) {
+        if (game && game.release_date.getFullYear() < 2020) {
             dbInstance = nodeOneDb; // Node 2
         } else {
             dbInstance = nodeTwoDb; // Node 3

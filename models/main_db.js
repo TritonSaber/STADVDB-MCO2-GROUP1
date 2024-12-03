@@ -21,6 +21,7 @@ const nodeTwoDb = new Sequelize('SLAVETWO', 'user', 'password', {
 const fact_table = masterDb.define('fact_table', {
     AppID: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
     Name: { type: DataTypes.TEXT('long'), allowNull: true },
+    Release_date: { type: DataTypes.DATEONLY, allowNull: true },
     Required_age: { type: DataTypes.INTEGER, allowNull: true },
     Price: { type: DataTypes.FLOAT, allowNull: true },
     Estimated_owners_min: { type: DataTypes.INTEGER, allowNull: true },
