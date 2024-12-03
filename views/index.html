@@ -1,90 +1,109 @@
 <!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <title>Steam Games</title>
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table, th, td {
-            border: 1px solid black;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-        }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      table,
+      th,
+      td {
+        border: 1px solid black;
+      }
+      th,
+      td {
+        padding: 10px;
+        text-align: left;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Games Selection</h1>
 
     <form id="dateForm">
-        <label for="gameID">Game ID:</label>
-        <input type="number" id="gameID" name="game_ID"><br><br>
-        <button type="submit">Get Game Details</button>
+      <label for="gameID">Game ID:</label>
+      <input type="number" id="gameID" name="game_ID" /><br /><br />
+      <button type="submit">Get Game Details</button>
     </form>
 
     <div class="game-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Game Name</th>
-                    <th>Release Date</th>
-                    <th>Required Age</th>
-                    <th>Price</th>
-                    <th>DLC Count</th>
-                    <th>Achievements</th>
-                    <th>Metacritic Score</th>
-                    <th>Positive Reviews</th>
-                    <th>Negative Reviews</th>
-                </tr>
-            </thead>
-            <tbody id="games-body"></tbody>
-        </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Game Name</th>
+            <th>Release Date</th>
+            <th>Required Age</th>
+            <th>Price</th>
+            <th>DLC Count</th>
+            <th>Achievements</th>
+            <th>Metacritic Score</th>
+            <th>Positive Reviews</th>
+            <th>Negative Reviews</th>
+          </tr>
+        </thead>
+        <tbody id="games-body"></tbody>
+      </table>
     </div>
 
     <h2>Add/Edit Game</h2>
     <form id="crudForm">
-        <input type="hidden" id="crudGameID" name="crud_game_ID">
-        <label for="gameName">Game Name:</label>
-        <input type="text" id="gameName" name="gameName" required><br><br>
-        <label for="releaseDate">Release Date:</label>
-        <input type="date" id="releaseDate" name="releaseDate" required><br><br>
-        <label for="requiredAge">Required Age:</label>
-        <input type="number" id="requiredAge" name="requiredAge" required><br><br>
-        <label for="price">Price:</label>
-        <input type="number" id="price" name="price" step="0.01" required><br><br>
-        <button type="button" id="addGameButton">Add Game</button>
-        <button type="button" id="updateGameButton">Update Game</button>
-        <button type="button" id="deleteGameButton">Delete Game</button>
+      <input type="hidden" id="crudGameID" name="crud_game_ID" />
+      <label for="gameName">Game Name:</label>
+      <input type="text" id="gameName" name="gameName" required /><br /><br />
+      <label for="releaseDate">Release Date:</label>
+      <input
+        type="date"
+        id="releaseDate"
+        name="releaseDate"
+        required
+      /><br /><br />
+      <label for="requiredAge">Required Age:</label>
+      <input
+        type="number"
+        id="requiredAge"
+        name="requiredAge"
+        required
+      /><br /><br />
+      <label for="price">Price:</label>
+      <input
+        type="number"
+        id="price"
+        name="price"
+        step="0.01"
+        required
+      /><br /><br />
+      <button type="button" id="addGameButton">Add Game</button>
+      <button type="button" id="updateGameButton">Update Game</button>
+      <button type="button" id="deleteGameButton">Delete Game</button>
     </form>
 
     <script>
-        const form = document.getElementById('dateForm');
-        const games_body = document.getElementById('games-body');
-        const crudForm = document.getElementById('crudForm');
+      const form = document.getElementById("dateForm");
+      const games_body = document.getElementById("games-body");
+      const crudForm = document.getElementById("crudForm");
 
-        // Fetch game details
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
+      // Fetch game details
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
 
-            const gameID = document.getElementById('gameID').value;
+        const gameID = document.getElementById("gameID").value;
 
-            const response = await fetch('/get-games', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ appId: gameID }),
-            });
+        const response = await fetch("/get-games", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ appId: gameID }),
+        });
 
-            const game = await response.json();
-            games_body.innerHTML = '';
+        const game = await response.json();
+        games_body.innerHTML = "";
 
-            if (response.ok) {
-                const row = `<tr onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_date}', ${game.Required_age}, ${game.Price})">
+        if (response.ok) {
+          const row = `<tr onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_date}', ${game.Required_age}, ${game.Price})">
                     <td>${game.Name}</td>
                     <td>${game.Release_date}</td>
                     <td>${game.Required_age}</td>
@@ -95,91 +114,97 @@
                     <td>${game.Positive_reviews}</td>
                     <td>${game.Negative_reviews}</td>
                 </tr>`;
-                games_body.innerHTML += row;
-            } else {
-                alert('Game not found.');
-            }
-        });
-
-        // Add a game
-        document.getElementById('addGameButton').addEventListener('click', async () => {
-            const gameData = {
-                Name: document.getElementById('gameName').value,
-                Release_date: document.getElementById('releaseDate').value,
-                Required_age: document.getElementById('requiredAge').value,
-                Price: document.getElementById('price').value,
-            };
-
-            const response = await fetch('/add-game', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(gameData),
-            });
-
-            if (response.ok) {
-                alert('Game added successfully!');
-                crudForm.reset();
-            } else {
-                alert('Failed to add game. Please check the server logs.');
-            }
-        });
-
-        // Update a game
-        document.getElementById('updateGameButton').addEventListener('click', async () => {
-            const gameData = {
-                AppID: document.getElementById('crudGameID').value,
-                Name: document.getElementById('gameName').value,
-                Release_date: document.getElementById('releaseDate').value,
-                Required_age: document.getElementById('requiredAge').value,
-                Price: document.getElementById('price').value,
-            };
-
-            const response = await fetch('/update-game', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(gameData),
-            });
-
-            if (response.ok) {
-                alert('Game updated successfully!');
-                crudForm.reset();
-            } else {
-                alert('Failed to update game. Please check the server logs.');
-            }
-        });
-
-        // Delete a game
-        document.getElementById('deleteGameButton').addEventListener('click', async () => {
-            const gameID = document.getElementById('crudGameID').value;
-
-            const response = await fetch('/delete-game', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ AppID: gameID }),
-            });
-
-            if (response.ok) {
-                alert('Game deleted successfully!');
-                crudForm.reset();
-            } else {
-                alert('Failed to delete game. Please check the server logs.');
-            }
-        });
-
-        // Select a game for editing
-        function selectGame(id, name, releaseDate, requiredAge, price) {
-            document.getElementById('crudGameID').value = id;
-            document.getElementById('gameName').value = name;
-            document.getElementById('releaseDate').value = releaseDate;
-            document.getElementById('requiredAge').value = requiredAge;
-            document.getElementById('price').value = price;
+          games_body.innerHTML += row;
+        } else {
+          alert("Game not found.");
         }
+      });
+
+      // Adding a game
+      document
+        .getElementById("addGameButton")
+        .addEventListener("click", async () => {
+          const gameData = {
+            Name: document.getElementById("gameName").value,
+            Release_date: document.getElementById("releaseDate").value,
+            Required_age: document.getElementById("requiredAge").value,
+            Price: document.getElementById("price").value,
+          };
+
+          const response = await fetch("/add-game", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(gameData),
+          });
+
+          if (response.ok) {
+            alert("Game added successfully!");
+            crudForm.reset();
+          } else {
+            alert("Failed to add game. Please check the server logs.");
+          }
+        });
+
+      // Update a game
+      document
+        .getElementById("updateGameButton")
+        .addEventListener("click", async () => {
+          const gameData = {
+            AppID: document.getElementById("crudGameID").value,
+            Name: document.getElementById("gameName").value,
+            Release_date: document.getElementById("releaseDate").value,
+            Required_age: document.getElementById("requiredAge").value,
+            Price: document.getElementById("price").value,
+          };
+
+          const response = await fetch("/update-game", {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(gameData),
+          });
+
+          if (response.ok) {
+            alert("Game updated successfully!");
+            crudForm.reset();
+          } else {
+            alert("Failed to update game. Please check the server logs.");
+          }
+        });
+
+      // Delete a game
+      document
+        .getElementById("deleteGameButton")
+        .addEventListener("click", async () => {
+          const gameID = document.getElementById("crudGameID").value;
+
+          const response = await fetch("/delete-game", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ AppID: gameID }),
+          });
+
+          if (response.ok) {
+            alert("Game deleted successfully!");
+            crudForm.reset();
+          } else {
+            alert("Failed to delete game. Please check the server logs.");
+          }
+        });
+
+      // Select a game for editing
+      function selectGame(id, name, releaseDate, requiredAge, price) {
+        document.getElementById("crudGameID").value = id;
+        document.getElementById("gameName").value = name;
+        document.getElementById("releaseDate").value = releaseDate;
+        document.getElementById("requiredAge").value = requiredAge;
+        document.getElementById("price").value = price;
+      }
     </script>
-</body>
+  </body>
 </html>

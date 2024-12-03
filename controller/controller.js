@@ -7,9 +7,13 @@ const {
 
 const postAddGame = async (req, res) => {
     try {
-        const gameData = req.body;
+        const gameData = req.body;  
         const releaseDate = new Date(gameData.Release_date);
 
+        // Remove AppID from gameData if it exists (it should not exist, because it's auto-incremented)
+        delete gameData.AppID;
+
+        // Insert the new game into the correct table based on release year
         if (releaseDate.getFullYear() < 2020) {
             await fact_table_master_pre2020.create(gameData);
             await fact_table_nodeOne.create(gameData);
@@ -44,9 +48,10 @@ const getGameDetails = async (req, res) => {
 
 const updateGameDetails = async (req, res) => {
     try {
-        const { AppID } = req.body;
-        const updatedData = req.body;
+        const { AppID } = req.body;  // Get AppID from the request body
+        const updatedData = req.body;  // The new data to update
 
+        // Check if game exists in the pre-2020 table
         const gamePre2020 = await fact_table_master_pre2020.findOne({ where: { AppID } });
         if (gamePre2020) {
             await fact_table_master_pre2020.update(updatedData, { where: { AppID } });
@@ -54,6 +59,7 @@ const updateGameDetails = async (req, res) => {
             return res.status(200).json({ message: 'Game updated successfully.' });
         }
 
+        // Check if game exists in the post-2020 table
         const gamePost2020 = await fact_table_master_post2020.findOne({ where: { AppID } });
         if (gamePost2020) {
             await fact_table_master_post2020.update(updatedData, { where: { AppID } });
@@ -70,8 +76,9 @@ const updateGameDetails = async (req, res) => {
 
 const deleteGame = async (req, res) => {
     try {
-        const { AppID } = req.body;
+        const { AppID } = req.body;  // Get AppID from the request body
 
+        // Check if game exists in the pre-2020 table
         const gamePre2020 = await fact_table_master_pre2020.findOne({ where: { AppID } });
         if (gamePre2020) {
             await fact_table_master_pre2020.destroy({ where: { AppID } });
@@ -79,6 +86,7 @@ const deleteGame = async (req, res) => {
             return res.status(200).json({ message: 'Game deleted successfully.' });
         }
 
+        // Check if game exists in the post-2020 table
         const gamePost2020 = await fact_table_master_post2020.findOne({ where: { AppID } });
         if (gamePost2020) {
             await fact_table_master_post2020.destroy({ where: { AppID } });
