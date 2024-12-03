@@ -140,7 +140,9 @@
         .addEventListener("click", async () => {
           const gameData = {
             Name: document.getElementById("gameName").value,
-            Release_date: document.getElementById("releaseDate").value,
+            Release_date: formatDate(
+              document.getElementById("releaseDate").value
+            ), // Format the date
             Required_age: document.getElementById("requiredAge").value,
             Price: document.getElementById("price").value,
           };
@@ -169,27 +171,63 @@
           }
 
           if (response.ok) {
-            const addedGame = await response.json();
-            alert(
-              gameID ? "Game updated successfully!" : "Game added successfully!"
-            );
-            crudForm.reset();
-            displayAddedGame(addedGame); // Display the added or updated game in the list
-            document.getElementById("saveGameButton").textContent = "Add Game"; // Reset the button text
+            const addedGame = await response.json(); // Get the returned game object
+
+            // Make sure to check the structure of the response in the console
+            console.log("Added/Updated Game:", addedGame);
+
+            if (addedGame && addedGame.AppID) {
+              alert(
+                gameID
+                  ? "Game updated successfully!"
+                  : "Game added successfully!"
+              );
+              crudForm.reset();
+
+              // If the game already exists (update scenario), replace the item in the UI
+              if (gameID) {
+                updateGameInUI(addedGame);
+              } else {
+                // If it is a new game, just display it
+                displayAddedGame(addedGame);
+              }
+
+              document.getElementById("saveGameButton").textContent =
+                "Add Game"; // Reset the button text
+            } else {
+              alert("Failed to add or update the game.");
+            }
           } else {
             alert("Failed to save game. Please check the server logs.");
           }
         });
 
+      // Function to format the date (removing time)
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toISOString().split("T")[0]; // Get only the date part (YYYY-MM-DD)
+      }
+
       // Function to display added or updated game in the list
       function displayAddedGame(game) {
         const listItem = document.createElement("li");
+        listItem.id = `game-${game.AppID}`; // Set a unique ID for the list item
         listItem.innerHTML = `${game.Name} - ${game.Release_date} 
     <button onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_date}', ${game.Required_age}, ${game.Price})">Edit</button>
     <button onclick="deleteGame(${game.AppID})">Delete</button>`;
 
         // Insert the new list item at the top of the list
         addedGamesList.insertBefore(listItem, addedGamesList.firstChild);
+      }
+
+      // Function to update the game in the UI when it's updated
+      function updateGameInUI(game) {
+        const listItem = document.getElementById(`game-${game.AppID}`);
+        if (listItem) {
+          listItem.innerHTML = `${game.Name} - ${game.Release_date} 
+      <button onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_date}', ${game.Required_age}, ${game.Price})">Edit</button>
+      <button onclick="deleteGame(${game.AppID})">Delete</button>`;
+        }
       }
 
       // Delete a game
@@ -219,12 +257,12 @@
 
       // Select a game for editing
       function selectGame(id, name, releaseDate, requiredAge, price) {
-        document.getElementById("crudGameID").value = id; // Set AppID in hidden field
+        document.getElementById("crudGameID").value = id;
         document.getElementById("gameName").value = name;
         document.getElementById("releaseDate").value = releaseDate;
         document.getElementById("requiredAge").value = requiredAge;
         document.getElementById("price").value = price;
-        document.getElementById("saveGameButton").textContent = "Save"; // Change button text to "Save"
+        document.getElementById("saveGameButton").textContent = "Save";
       }
     </script>
   </body>

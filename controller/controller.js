@@ -8,24 +8,18 @@ const {
 
 const postAddGame = async (req, res) => {
   try {
-    const gameData = req.body; // The gameData should include all necessary fields
+    const gameData = req.body;
     const releaseDate = new Date(gameData.Release_date);
-
-    // Remove AppID from gameData if it exists (it should not exist, because it's auto-incremented)
     delete gameData.AppID;
 
-    // Insert the new game into the correct table in MASTERNODE based on release year
-    let createdGame;
+    let newGame;
     if (releaseDate.getFullYear() < 2020) {
-      // Insert into MASTERNODE pre2020 table
-      createdGame = await fact_table_master_pre2020.create(gameData);
+      newGame = await fact_table_master_pre2020.create(gameData);
     } else {
-      // Insert into MASTERNODE post2020 table
-      createdGame = await fact_table_master_post2020.create(gameData);
+      newGame = await fact_table_master_post2020.create(gameData);
     }
 
-    // Send back the created game data as a response
-    res.status(201).json(createdGame);
+    res.status(201).json(newGame); // Return the newly added game
   } catch (error) {
     console.error("Error adding game:", error);
     res.status(500).json({ error: "Failed to add game." });
@@ -75,25 +69,17 @@ const updateGameDetails = async (req, res) => {
   try {
     const { AppID, ...updatedData } = req.body;
 
-    // Ensure that the AppID is valid and present in the request body
-    if (!AppID) {
-      return res
-        .status(400)
-        .json({ error: "AppID is required to update a game." });
-    }
-
-    // Check if the game exists in the MASTERNODE pre2020 table
     const gamePre2020 = await fact_table_master_pre2020.findOne({
       where: { AppID },
     });
     if (gamePre2020) {
       await fact_table_master_pre2020.update(updatedData, { where: { AppID } });
-      return res
-        .status(200)
-        .json({ message: "Game updated successfully in pre2020 table." });
+      const updatedGame = await fact_table_master_pre2020.findOne({
+        where: { AppID },
+      });
+      return res.status(200).json(updatedGame); // Return updated game data
     }
 
-    // Check if the game exists in the MASTERNODE post2020 table
     const gamePost2020 = await fact_table_master_post2020.findOne({
       where: { AppID },
     });
@@ -101,12 +87,12 @@ const updateGameDetails = async (req, res) => {
       await fact_table_master_post2020.update(updatedData, {
         where: { AppID },
       });
-      return res
-        .status(200)
-        .json({ message: "Game updated successfully in post2020 table." });
+      const updatedGame = await fact_table_master_post2020.findOne({
+        where: { AppID },
+      });
+      return res.status(200).json(updatedGame); // Return updated game data
     }
 
-    // If no game was found in either table
     return res.status(404).json({ message: "Game not found." });
   } catch (error) {
     console.error("Error updating game details:", error);
