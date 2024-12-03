@@ -1,195 +1,101 @@
-const sequelize = require('../models/main_db.js');
-const express = require('express');
-const path = require('path');
-const Op = require('sequelize');
-const { masterDb, nodeOneDb, nodeTwoDb, fact_table } = require('../models/main_db.js');
+const {
+    fact_table_master_pre2020,
+    fact_table_master_post2020,
+    fact_table_nodeOne,
+    fact_table_nodeTwo,
+} = require('../models/main_db');
 
-const getIndex = (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'views', 'index.html')); 
-};
-
-const checkSlaveAvailability = async () => {
-    try {
-        // Check if nodeOneDb is up
-        await nodeOneDb.authenticate();
-        console.log('Node One is available');
-    } catch (error) {
-        console.error('Node One is not available:', error);
-        return false;
-    }
-
-    try {
-        // Check if nodeTwoDb is up
-        await nodeTwoDb.authenticate();
-        console.log('Node Two is available');
-    } catch (error) {
-        console.error('Node Two is not available:', error);
-        return false;
-    }
-
-    return true; // Both nodes are available
-};
-
-// Function to add a game to the appropriate node
 const postAddGame = async (req, res) => {
-    const gameData = req.body;
-
-    // Check slave availability before proceeding
-    const slavesAvailable = await checkSlaveAvailability();
-    if (!slavesAvailable) {
-        return res.status(503).send('One or more slave databases are not available.');
-    }
-
     try {
-        // Determine where to insert based on release year
-        const releaseYear = new Date(gameData.release_date).getFullYear();
-        
-        console.log(releaseYear);
-        let dbInstance;
+        const gameData = req.body;
+        const releaseDate = new Date(gameData.Release_date);
 
-        if (releaseYear < 2020) {
-            dbInstance = nodeOneDb;
+        if (releaseDate.getFullYear() < 2020) {
+            await fact_table_master_pre2020.create(gameData);
+            await fact_table_nodeOne.create(gameData);
         } else {
-            dbInstance = nodeTwoDb;
+            await fact_table_master_post2020.create(gameData);
+            await fact_table_nodeTwo.create(gameData);
         }
 
-        // Insert into the appropriate node
-        await dbInstance.models.fact_table.create(gameData);
-
-        // Replicate to master node
-        await masterDb.models.fact_table.create(gameData);
-
-        res.status(201).send('Game added successfully');
+        res.status(201).json({ message: 'Game added successfully.' });
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Error adding game');
+        console.error('Error adding game:', error);
+        res.status(500).json({ error: 'Failed to add game.' });
     }
 };
 
-// Function to get game details from the central node
 const getGameDetails = async (req, res) => {
-    const { game_ID, labeled_date_period } = req.body;
-    masterDb.models.fact_table = fact_table;
-
-    const yearThreshold = new Date("2020-01-01").getFullYear()
-    console.log(yearThreshold)
-    var dateCondition = {
-        AppID: game_ID
-    };
-
-    if(labeled_date_period === 'All'){
-        console.log("All")
-        dateCondition = {
-            AppID: game_ID
-        };
-    }
-    else if(labeled_date_period === 'Before 2020'){
-        console.log("Before 2020");
-        dateCondition.Release_date = {
-                [Op.lt]: yearThreshold,
-            };
-        console.log(dateCondition);
-    }
-    else{
-        console.log("After 2020");
-            dateCondition.Release_date = {
-                [Op.gte]: yearThreshold,
-            };
-        console.log(dateCondition);
-    }
-
     try {
-        const game = await masterDb.models.fact_table.findAll({
-            where: dateCondition,
-            attributes: ['Release_date', 'Name', 'Required_age', 'Price', 'DLC_count', 'Achievements',
-                'Metacritic_score', 'Positive_reviews', 'Negative_reviews'
-            ],
-            raw:true
-        });
-    
+        const { appId } = req.body;
 
-        if (!game.length) {
-            return res.status(404).send('Games not found');
-        }
+        const gamePre2020 = await fact_table_master_pre2020.findOne({ where: { AppID: appId } });
+        if (gamePre2020) return res.status(200).json(gamePre2020);
 
-        res.status(200).json(game);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Error fetching game details');
+        const gamePost2020 = await fact_table_master_post2020.findOne({ where: { AppID: appId } });
+        if (gamePost2020) return res.status(200).json(gamePost2020);
+
+        res.status(404).json({ message: 'Game not found.' });
+    } catch (error) {
+        console.error('Error retrieving game details:', error);
+        res.status(500).json({ error: 'Failed to retrieve game details.' });
     }
 };
 
-
-const postEditGame = async (req, res) => {
-    const { AppID, updates } = req.body;
-
-    // Check slave availability before proceeding
-    const slavesAvailable = await checkSlaveAvailability();
-    if (!slavesAvailable) {
-        return res.status(503).send('One or more slave databases are not available.');
-    }
-
-    const transaction = await masterDb.transaction();
-
+const updateGameDetails = async (req, res) => {
     try {
-        const game = await masterDb.models.fact_table.findOne({ where: { AppID } }, { transaction });
+        const { AppID } = req.body;
+        const updatedData = req.body;
 
-        if (!game) {
-            return res.status(404).send('Game not found');
+        const gamePre2020 = await fact_table_master_pre2020.findOne({ where: { AppID } });
+        if (gamePre2020) {
+            await fact_table_master_pre2020.update(updatedData, { where: { AppID } });
+            await fact_table_nodeOne.update(updatedData, { where: { AppID } });
+            return res.status(200).json({ message: 'Game updated successfully.' });
         }
 
-        // Update game details
-        await game.update(updates, { transaction });
+        const gamePost2020 = await fact_table_master_post2020.findOne({ where: { AppID } });
+        if (gamePost2020) {
+            await fact_table_master_post2020.update(updatedData, { where: { AppID } });
+            await fact_table_nodeTwo.update(updatedData, { where: { AppID } });
+            return res.status(200).json({ message: 'Game updated successfully.' });
+        }
 
-        // Replicate changes to other nodes
-        await nodeOneDb.models.fact_table.update(updates, { where: { AppID }, transaction });
-        await nodeTwoDb.models.fact_table.update(updates, { where: { AppID }, transaction });
-
-        await transaction.commit();
-        res.status(200).send('Game updated successfully');
+        res.status(404).json({ message: 'Game not found.' });
     } catch (error) {
-        await transaction.rollback();
-        console.error(error);
-        res.status(500).send('Error updating game');
+        console.error('Error updating game details:', error);
+        res.status(500).json({ error: 'Failed to update game details.' });
     }
 };
 
-const postDeleteGame = async (req, res) => {
-    const { AppID } = req.body;
-
-    // Check slave availability before proceeding
-    const slavesAvailable = await checkSlaveAvailability();
-    if (!slavesAvailable) {
-        return res.status(503).send('One or more slave databases are not available.');
-    }
-
+const deleteGame = async (req, res) => {
     try {
-        // Delete from master node
-        await masterDb.models.fact_table.destroy({ where: { AppID } });
+        const { AppID } = req.body;
 
-        // Also delete from the appropriate node
-        const game = await masterDb.models.fact_table.findOne({ where: { AppID } });
-        let dbInstance;
-
-        if (game && game.release_date.getFullYear() < 2020) {
-            dbInstance = nodeOneDb; // Node 2
-        } else {
-            dbInstance = nodeTwoDb; // Node 3
+        const gamePre2020 = await fact_table_master_pre2020.findOne({ where: { AppID } });
+        if (gamePre2020) {
+            await fact_table_master_pre2020.destroy({ where: { AppID } });
+            await fact_table_nodeOne.destroy({ where: { AppID } });
+            return res.status(200).json({ message: 'Game deleted successfully.' });
         }
 
-        await dbInstance.models.fact_table.destroy({ where: { AppID } });
+        const gamePost2020 = await fact_table_master_post2020.findOne({ where: { AppID } });
+        if (gamePost2020) {
+            await fact_table_master_post2020.destroy({ where: { AppID } });
+            await fact_table_nodeTwo.destroy({ where: { AppID } });
+            return res.status(200).json({ message: 'Game deleted successfully.' });
+        }
 
-        res.status(200).send('Game deleted successfully');
+        res.status(404).json({ message: 'Game not found.' });
     } catch (error) {
-        console.error(error);
-        res.status(500).send('Error deleting game');
+        console.error('Error deleting game:', error);
+        res.status(500).json({ error: 'Failed to delete game.' });
     }
 };
 
 module.exports = {
     postAddGame,
     getGameDetails,
-    postEditGame,
-    postDeleteGame,
-    getIndex
+    updateGameDetails,
+    deleteGame,
 };

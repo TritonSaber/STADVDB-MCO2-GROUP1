@@ -3,39 +3,74 @@ const { Sequelize, DataTypes } = require('sequelize');
 const masterDb = new Sequelize('MASTERNODE', 'user', 'password', {
     host: 'ccscloud.dlsu.edu.ph',
     port: 21922,
-    dialect: 'mysql'
+    dialect: 'mysql',
 });
 
 const nodeOneDb = new Sequelize('SLAVEONE', 'user', 'password', {
     host: 'ccscloud.dlsu.edu.ph',
     port: 21932,
-    dialect: 'mysql'
+    dialect: 'mysql',
 });
 
 const nodeTwoDb = new Sequelize('SLAVETWO', 'user', 'password', {
     host: 'ccscloud.dlsu.edu.ph',
     port: 21942,
-    dialect: 'mysql'
+    dialect: 'mysql',
 });
 
-const fact_table = masterDb.define('fact_table', {
-    AppID: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true, allowNull: false },
-    Name: { type: DataTypes.TEXT('long'), allowNull: true },
-    Release_date: { type: DataTypes.DATEONLY, allowNull: true },
-    Required_age: { type: DataTypes.INTEGER, allowNull: true },
-    Price: { type: DataTypes.FLOAT, allowNull: true },
-    Estimated_owners_min: { type: DataTypes.INTEGER, allowNull: true },
-    Estimated_owners_max: { type: DataTypes.INTEGER, allowNull: true },
-    DLC_count: { type: DataTypes.INTEGER, allowNull: true },
-    Achievements: { type: DataTypes.INTEGER, allowNull: true },
-    About_the_game: { type: DataTypes.TEXT('long'), allowNull: true },
-    Notes: { type: DataTypes.TEXT('long'), allowNull: true },
-    Reviews: { type: DataTypes.TEXT, allowNull: true },
-    Metacritic_score: { type: DataTypes.STRING(1000), allowNull: true },
-    Metacritic_URL: { type: DataTypes.STRING(1000), allowNull: true },
-    Positive_reviews: { type: DataTypes.INTEGER, allowNull: true },
-    Negative_reviews: { type: DataTypes.INTEGER, allowNull: true },
-}, { tableName: 'dim_gameinfo', timestamps: false });
+// Define a function to create tables with explicit table names
+const defineGameTable = (db, tableName) =>
+    db.define(
+        tableName,
+        {
+            AppID: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            Name: { type: DataTypes.TEXT },
+            Release_date: { type: DataTypes.DATE },
+            Required_age: { type: DataTypes.INTEGER },
+            Price: { type: DataTypes.FLOAT },
+            Estimated_owners_min: { type: DataTypes.INTEGER },
+            Estimated_owners_max: { type: DataTypes.INTEGER },
+            DLC_count: { type: DataTypes.INTEGER },
+            Achievements: { type: DataTypes.INTEGER },
+            About_the_game: { type: DataTypes.TEXT },
+            Notes: { type: DataTypes.TEXT },
+            Reviews: { type: DataTypes.TEXT },
+            Metacritic_score: { type: DataTypes.STRING },
+            Metacritic_url: { type: DataTypes.STRING },
+            Positive_reviews: { type: DataTypes.INTEGER },
+            Negative_reviews: { type: DataTypes.INTEGER },
+        },
+        { 
+            timestamps: false,
+            tableName: tableName 
+        }
+    );
 
+// Define tables with the correct names
+const fact_table_master_pre2020 = defineGameTable(masterDb, 'game_info_pre2020');
+const fact_table_master_post2020 = defineGameTable(masterDb, 'game_info_post2020');
+const fact_table_nodeOne = defineGameTable(nodeOneDb, 'game_info_pre2020');
+const fact_table_nodeTwo = defineGameTable(nodeTwoDb, 'game_info_post2020');
 
-module.exports = { masterDb, nodeOneDb, nodeTwoDb, fact_table };
+(async () => {
+    try {
+        // Authenticate the databases
+        await masterDb.authenticate();
+        await nodeOneDb.authenticate();
+        await nodeTwoDb.authenticate();
+
+        console.log('All databases connected successfully.');
+    } catch (err) {
+        console.error('Error connecting to databases:', err);
+    }
+})();
+
+module.exports = {
+    masterDb,
+    nodeOneDb,
+    nodeTwoDb,
+    fact_table_master_pre2020,
+    fact_table_master_post2020,
+    fact_table_nodeOne,
+    fact_table_nodeTwo,
+};

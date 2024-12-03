@@ -1,11 +1,11 @@
 const express = require('express');
-const controller = require('../controller/controller.js');
-const app = express.Router();
+const controller = require('../controller/controller');
 
-app.get('/', controller.getIndex);
-app.post('/get-games', controller.getGameDetails);
-app.post('/add-game', controller.postAddGame);
-app.post('/update-game', controller.postEditGame);
-app.post('/delete/:id', controller.postDeleteGame);
+const router = express.Router();
 
-module.exports = app;
+router.post('/get-games', controller.getGameDetails);
+router.post('/add-game', controller.postAddGame);
+router.put('/update-game', controller.updateGameDetails);
+router.delete('/delete-game', controller.deleteGame);
+
+module.exports = router;
