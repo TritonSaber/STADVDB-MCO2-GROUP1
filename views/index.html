@@ -145,8 +145,9 @@
             Price: document.getElementById("price").value,
           };
 
-          const gameID = document.getElementById("crudGameID").value;
+          const gameID = document.getElementById("crudGameID").value; // AppID (hidden field)
           let response;
+
           if (gameID) {
             // If AppID exists, update the game
             response = await fetch("/update-game", {
@@ -184,8 +185,8 @@
       function displayAddedGame(game) {
         const listItem = document.createElement("li");
         listItem.innerHTML = `${game.Name} - ${game.Release_date} 
-        <button onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_date}', ${game.Required_age}, ${game.Price})">Edit</button>
-        <button onclick="deleteGame(${game.AppID})">Delete</button>`;
+    <button onclick="selectGame(${game.AppID}, '${game.Name}', '${game.Release_date}', ${game.Required_age}, ${game.Price})">Edit</button>
+    <button onclick="deleteGame(${game.AppID})">Delete</button>`;
 
         // Insert the new list item at the top of the list
         addedGamesList.insertBefore(listItem, addedGamesList.firstChild);
@@ -198,12 +199,12 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ AppID: appID }),
+          body: JSON.stringify({ AppID: appID }), // Send AppID in the request body
         });
 
         if (response.ok) {
           alert("Game deleted successfully!");
-          // Remove the game from the list
+          // Remove the game from the list in the UI
           const listItems = addedGamesList.getElementsByTagName("li");
           for (let item of listItems) {
             if (item.innerHTML.includes(`onclick="selectGame(${appID}`)) {
@@ -218,12 +219,12 @@
 
       // Select a game for editing
       function selectGame(id, name, releaseDate, requiredAge, price) {
-        document.getElementById("crudGameID").value = id;
+        document.getElementById("crudGameID").value = id; // Set AppID in hidden field
         document.getElementById("gameName").value = name;
         document.getElementById("releaseDate").value = releaseDate;
         document.getElementById("requiredAge").value = requiredAge;
         document.getElementById("price").value = price;
-        document.getElementById("saveGameButton").textContent = "Save";
+        document.getElementById("saveGameButton").textContent = "Save"; // Change button text to "Save"
       }
     </script>
   </body>
