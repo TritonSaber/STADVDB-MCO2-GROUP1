@@ -4,6 +4,12 @@ const masterDb = new Sequelize("MASTERNODE", "user", "password", {
   host: "ccscloud.dlsu.edu.ph",
   port: 21922,
   dialect: "mysql",
+  pool:{
+    max: 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  }
 });
 
 // const nodeOneDb = new Sequelize('SLAVEONE', 'user', 'password', {

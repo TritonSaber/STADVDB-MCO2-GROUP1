@@ -1,5 +1,6 @@
 const { Sequelize } = require("sequelize");
 const {
+  masterDb,
   fact_table_master_pre2020,
   fact_table_master_post2020,
   //   fact_table_nodeOne,
@@ -7,6 +8,7 @@ const {
 } = require("../models/main_db.js");
 
 const postAddGame = async (req, res) => {
+  
   try {
     const gameData = req.body;
     const releaseDate = new Date(gameData.Release_date);
@@ -66,35 +68,54 @@ const getAllGames = async (req, res) => {
 };
 
 const updateGameDetails = async (req, res) => {
+  const gameTransaction = await masterDb.transaction();
+
   try {
     const { AppID, ...updatedData } = req.body;
 
     const gamePre2020 = await fact_table_master_pre2020.findOne({
       where: { AppID },
+      transaction : gameTransaction,
+      lock: gameTransaction.LOCK.UPDATE
     });
     if (gamePre2020) {
-      await fact_table_master_pre2020.update(updatedData, { where: { AppID } });
+      Object.assign(fact_table_master_pre2020, updatedData);
+      await fact_table_master_pre2020.update(updatedData, { where: { AppID }, transaction: gameTransaction});
+
       const updatedGame = await fact_table_master_pre2020.findOne({
         where: { AppID },
+        transaction : gameTransaction,
+        lock: gameTransaction.LOCK.UPDATE
       });
+
+      await gameTransaction.commit();
       return res.status(200).json(updatedGame); // Return updated game data
     }
 
     const gamePost2020 = await fact_table_master_post2020.findOne({
       where: { AppID },
+      transaction : gameTransaction,
+      lock: gameTransaction.LOCK.UPDATE
     });
     if (gamePost2020) {
+      Object.assign(gamePost2020, updatedData);
       await fact_table_master_post2020.update(updatedData, {
         where: { AppID },
+        transaction : gameTransaction
       });
+
       const updatedGame = await fact_table_master_post2020.findOne({
         where: { AppID },
+        transaction : gameTransaction,
+        lock: gameTransaction.LOCK.UPDATE
       });
+      await gameTransaction.commit();
       return res.status(200).json(updatedGame); // Return updated game data
     }
 
     return res.status(404).json({ message: "Game not found." });
   } catch (error) {
+    await gameTransaction.rollback();
     console.error("Error updating game details:", error);
     res.status(500).json({ error: "Failed to update game details." });
   }
@@ -111,12 +132,16 @@ const deleteGame = async (req, res) => {
         .json({ error: "AppID is required to delete a game." });
     }
 
+    const gameTransaction = await masterDb.transaction();
+
     // Delete from the pre-2020 tables in MASTERNODE
     const gamePre2020 = await fact_table_master_pre2020.findOne({
       where: { AppID },
+      transaction : gameTransaction,
+      lock: gameTransaction.LOCK.UPDATE
     });
     if (gamePre2020) {
-      await fact_table_master_pre2020.destroy({ where: { AppID } });
+      await fact_table_master_pre2020.destroy({ where: { AppID }, transaction : gameTransaction });
       return res
         .status(200)
         .json({ message: "Game deleted successfully from pre2020 tables." });
@@ -125,9 +150,11 @@ const deleteGame = async (req, res) => {
     // Delete from the post-2020 tables in MASTERNODE
     const gamePost2020 = await fact_table_master_post2020.findOne({
       where: { AppID },
+      transaction : gameTransaction,
+      lock: gameTransaction.LOCK.UPDATE
     });
     if (gamePost2020) {
-      await fact_table_master_post2020.destroy({ where: { AppID } });
+      await fact_table_master_post2020.destroy({ where: { AppID }, transaction : gameTransaction });
       return res
         .status(200)
         .json({ message: "Game deleted successfully from post2020 tables." });
@@ -136,6 +163,7 @@ const deleteGame = async (req, res) => {
     // If no game was found in either table
     return res.status(404).json({ message: "Game not found." });
   } catch (error) {
+    await gameTransaction.rollback();
     console.error("Error deleting game:", error);
     res.status(500).json({ error: "Failed to delete game." });
   }
